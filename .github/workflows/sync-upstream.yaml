@@ -1,0 +1,52 @@
+name: Prepare Rebase Pull Request
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Runs every day at midnight
+  workflow_dispatch:
+
+jobs:
+  prepare-pr:
+    runs-on: ubuntu-latest
+    env:
+      UPSTREAM_REPO: https://github.com/red-hat-storage/ocs-operator.git
+      BRANCH_SUFFIX: -okd
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@v4
+
+      - name: Setup Git Configuration
+        run: |
+          git config user.name "GitHub Action"
+          git config user.email "action@github.com"
+
+      - name: Add Upstream Repository
+        run: git remote add upstream ${{ env.UPSTREAM_REPO }}
+
+      - name: Determine Upstream Branch
+        run: |
+          CURRENT_BRANCH=$(git branch --show-current)
+          UPSTREAM_BRANCH=${CURRENT_BRANCH%${{ env.BRANCH_SUFFIX }}}
+          echo "UPSTREAM_BRANCH=$UPSTREAM_BRANCH" >> $GITHUB_ENV
+
+      - name: Fetch Upstream branch
+        run: git fetch upstream ${{ env.UPSTREAM_BRANCH }}
+
+      - name: Create a New Branch from Upstream
+        run: |
+          PR_BRANCH="${{ env.UPSTREAM_BRANCH }}-rebase"
+          git checkout -b $PR_BRANCH upstream/${{ env.UPSTREAM_BRANCH }}
+
+      - name: Push the New Branch to Fork
+        run: git push origin $PR_BRANCH
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: 'Prepare for rebase'
+          title: 'Prepare for Rebase onto Upstream ${{ env.UPSTREAM_BRANCH }}'
+          body: 'This PR is auto-generated to prepare for a rebase onto upstream ${{ env.UPSTREAM_BRANCH }}. Please resolve any conflicts that arise.'
+          branch: $PR_BRANCH
+          base: ${{ env.UPSTREAM_BRANCH }}-okd
+          labels: 'rebase, automated-pr'
+          delete-branch: true
