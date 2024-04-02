@@ -27,18 +27,15 @@ jobs:
         run: |
           CURRENT_BRANCH=$(git branch --show-current)
           UPSTREAM_BRANCH=${CURRENT_BRANCH%${{ env.BRANCH_SUFFIX }}}
+          PR_BRANCH=${UPSTREAM_BRANCH}-upstream
           echo "UPSTREAM_BRANCH=$UPSTREAM_BRANCH" >> $GITHUB_ENV
+          echo "PR_BRANCH=$PR_BRANCH" >> $GITHUB_ENV
 
       - name: Fetch Upstream branch
         run: git fetch upstream ${{ env.UPSTREAM_BRANCH }}
 
-      - name: Create a New Branch from Upstream
-        run: |
-          PR_BRANCH="${{ env.UPSTREAM_BRANCH }}-rebase"
-          git checkout -b $PR_BRANCH upstream/${{ env.UPSTREAM_BRANCH }}
-
-      - name: Push the New Branch to Fork
-        run: git push origin $PR_BRANCH
+      - name: Reset to Upstream branch
+        run: git reset --hard upstream/${{ env.UPSTREAM_BRANCH }}
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v6
@@ -46,7 +43,7 @@ jobs:
           commit-message: 'Prepare for rebase'
           title: 'Prepare for Rebase onto Upstream ${{ env.UPSTREAM_BRANCH }}'
           body: 'This PR is auto-generated to prepare for a rebase onto upstream ${{ env.UPSTREAM_BRANCH }}. Please resolve any conflicts that arise.'
-          branch: $PR_BRANCH
+          branch: ${{ env.PR_BRANCH }}
           base: ${{ env.UPSTREAM_BRANCH }}-okd
           labels: 'rebase, automated-pr'
-          delete-branch: true
+          delete-branch: false
