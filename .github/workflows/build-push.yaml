@@ -1,0 +1,111 @@
+name: Build and Push OCS Operator Images
+
+on:
+  push:
+    branches:
+      - 'release-*-okd'  # Targets branches with the -okd suffix
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'Release version (e.g., 4.15)'
+        required: true
+
+env:
+  IMAGE_REGISTRY: 'quay.io'
+  REGISTRY_NAMESPACE: 'origin-odf'
+
+jobs:
+  release-version:
+    runs-on: ubuntu-latest
+    outputs:
+      release-version: ${{ steps.release-version.outputs.release-version }}
+
+    steps:
+      - name: Extract Release Version
+        id: release-version
+        run: |
+          if [[ "${{ github.ref_name }}" == "main" ]]; then
+            echo "Using latest release version"
+            echo "RELEASE_VERSION=latest" >> $GITHUB_ENV
+            echo "release-version=latest" >> $GITHUB_OUTPUT
+          else
+            RELEASE_VERSION=$(echo ${{ github.ref_name }} | sed -E 's/release-([0-9]+\.[0-9]+)-okd/\1/')
+            echo "Using release version $RELEASE_VERSION"
+            echo "RELEASE_VERSION=$RELEASE_VERSION" >> $GITHUB_ENV
+            echo "release-version=$RELEASE_VERSION" >> $GITHUB_OUTPUT
+          fi
+
+  build-and-push-operator:
+    needs: release-version
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_TAG: ${{ needs.release-version.outputs.release-version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Podman
+        uses: redhat-actions/podman-login@v1
+        with:
+          registry: ${{ env.IMAGE_REGISTRY }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Build ocs-operator image
+        run: |
+          export IMAGE_TAG=${{ env.IMAGE_TAG }}
+          export IMAGE_REGISTRY=${{ env.IMAGE_REGISTRY }}
+          export REGISTRY_NAMESPACE=${{ env.REGISTRY_NAMESPACE }}
+          make ocs-operator
+
+      - name: Push ocs-operator image
+        run: podman push "${{ env.IMAGE_REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/ocs-operator:${{ env.IMAGE_TAG }}"
+
+  build-and-push-metrics-exporter:
+    needs: release-version
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_TAG: ${{ needs.release-version.outputs.release-version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Podman
+        uses: redhat-actions/podman-login@v1
+        with:
+          registry: ${{ env.IMAGE_REGISTRY }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Build ocs-metrics-exporter image
+        run: |
+          export IMAGE_TAG=${{ env.IMAGE_TAG }}
+          export IMAGE_REGISTRY=${{ env.IMAGE_REGISTRY }}
+          export REGISTRY_NAMESPACE=${{ env.REGISTRY_NAMESPACE }}
+          make ocs-metrics-exporter
+
+      - name: Push ocs-metrics-exporter image
+        run: podman push "${{ env.IMAGE_REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/ocs-metrics-exporter:${{ env.IMAGE_TAG }}"
+
+  build-and-push-operator-bundle:
+    needs: [release-version, build-and-push-operator, build-and-push-metrics-exporter]
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_TAG: ${{ needs.release-version.outputs.release-version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Podman
+        uses: redhat-actions/podman-login@v1
+        with:
+          registry: ${{ env.IMAGE_REGISTRY }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Build operator-bundle image
+        run: |
+          export IMAGE_TAG=${{ env.IMAGE_TAG }}
+          export IMAGE_REGISTRY=${{ env.IMAGE_REGISTRY }}
+          export REGISTRY_NAMESPACE=${{ env.REGISTRY_NAMESPACE }}
+          make operator-bundle
+
+      - name: Push operator-bundler image
+        run: podman push "${{ env.IMAGE_REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/ocs-operator-bundle:${{ env.IMAGE_TAG }}"
