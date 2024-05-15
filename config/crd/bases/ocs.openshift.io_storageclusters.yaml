@@ -557,7 +557,7 @@ spec:
                 type: object
               defaultStorageProfile:
                 description: DefaultStorageProfile is the default storage profile
-                  to use for the storageclassrequest as StorageProfile is optional.
+                  to use for the storagerequest as StorageProfile is optional.
                 type: string
               enableCephTools:
                 description: EnableCephTools toggles on whether or not the ceph tools
@@ -737,6 +737,19 @@ spec:
                         type: integer
                       reconcileStrategy:
                         type: string
+                      waitTimeoutForHealthyOSDInMinutes:
+                        description: WaitTimeoutForHealthyOSDInMinutes defines the
+                          time the operator would wait before an OSD can be stopped
+                          for upgrade or restart. If `continueUpgradeAfterChecksEvenIfNotHealthy`
+                          is `false` and the timeout exceeds and OSD is not ok to
+                          stop, then the operator would skip upgrade for the current
+                          OSD and proceed with the next one. If `continueUpgradeAfterChecksEvenIfNotHealthy`
+                          is `true`, then operator would continue with the upgrade
+                          of an OSD even if its not ok to stop after the timeout.
+                          This timeout won't be applied if `skipUpgradeChecks` is
+                          `true`. The default wait timeout is 10 minutes.
+                        format: int64
+                        type: integer
                     type: object
                   cephConfig:
                     description: ManageCephConfig defines how to reconcile the Ceph
@@ -1763,8 +1776,7 @@ spec:
                     properties:
                       daemonCount:
                         default: 1
-                        maximum: 1
-                        minimum: 0
+                        minimum: 1
                         type: integer
                       reconcileStrategy:
                         type: string

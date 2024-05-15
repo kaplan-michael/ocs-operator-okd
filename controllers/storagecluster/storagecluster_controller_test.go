@@ -22,10 +22,8 @@ import (
 	ocsv1alpha1 "github.com/red-hat-storage/ocs-operator/api/v4/v1alpha1"
 	"github.com/red-hat-storage/ocs-operator/v4/controllers/defaults"
 	"github.com/red-hat-storage/ocs-operator/v4/controllers/platform"
-	"github.com/red-hat-storage/ocs-operator/v4/controllers/util"
 	statusutil "github.com/red-hat-storage/ocs-operator/v4/controllers/util"
 	"github.com/red-hat-storage/ocs-operator/v4/version"
-	cephv1 "github.com/rook/rook/pkg/apis/ceph.rook.io/v1"
 	rookCephv1 "github.com/rook/rook/pkg/apis/ceph.rook.io/v1"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
@@ -38,7 +36,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	k8sVersion "k8s.io/apimachinery/pkg/version"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -1104,33 +1101,33 @@ func createFakeStorageClusterReconciler(t *testing.T, obj ...runtime.Object) Sto
 	scheme := createFakeScheme(t)
 	name := mockStorageClusterRequest.NamespacedName.Name
 	namespace := mockStorageClusterRequest.NamespacedName.Namespace
-	cfs := &cephv1.CephFilesystem{
+	cfs := &rookCephv1.CephFilesystem{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-cephfilesystem", name),
 			Namespace: namespace,
 		},
-		Status: &cephv1.CephFilesystemStatus{
-			Phase: cephv1.ConditionType(util.PhaseReady),
+		Status: &rookCephv1.CephFilesystemStatus{
+			Phase: rookCephv1.ConditionType(statusutil.PhaseReady),
 		},
 	}
-	cbp := &cephv1.CephBlockPool{
+	cbp := &rookCephv1.CephBlockPool{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-cephblockpool", name),
 			Namespace: namespace,
 		},
-		Status: &cephv1.CephBlockPoolStatus{
-			Phase: cephv1.ConditionType(util.PhaseReady),
+		Status: &rookCephv1.CephBlockPoolStatus{
+			Phase: rookCephv1.ConditionType(statusutil.PhaseReady),
 		},
 	}
 	obj = append(obj, cbp, cfs)
 	client := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(obj...).WithStatusSubresource(sc).Build()
 
-	clusters, err := util.GetClusters(context.TODO(), client)
+	clusters, err := statusutil.GetClusters(context.TODO(), client)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to get clusters %s", err.Error()))
 	}
 
-	operatorNamespace, err := util.GetOperatorNamespace()
+	operatorNamespace, err := statusutil.GetOperatorNamespace()
 	if err != nil {
 		operatorNamespace = "openshift-storage"
 	}
@@ -1139,7 +1136,6 @@ func createFakeStorageClusterReconciler(t *testing.T, obj ...runtime.Object) Sto
 		Client:            client,
 		Scheme:            scheme,
 		OperatorCondition: newStubOperatorCondition(),
-		serverVersion:     &k8sVersion.Info{},
 		Log:               logf.Log.WithName("controller_storagecluster_test"),
 		clusters:          clusters,
 		OperatorNamespace: operatorNamespace,
@@ -1294,9 +1290,8 @@ func TestStorageClusterOnMultus(t *testing.T) {
 }
 
 func assertCephClusterNetwork(t assert.TestingT, reconciler StorageClusterReconciler, cr *api.StorageCluster, request reconcile.Request) {
-	serverVersion := &k8sVersion.Info{}
 	request.Name = "ocsinit-cephcluster"
-	cephCluster, err := newCephCluster(cr, "", serverVersion, nil, log)
+	cephCluster, err := newCephCluster(cr, "", nil, log)
 	assert.NoError(t, err)
 	err = reconciler.Client.Get(context.TODO(), request.NamespacedName, cephCluster)
 	assert.NoError(t, err)

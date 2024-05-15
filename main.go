@@ -38,12 +38,11 @@ import (
 	ocsclientv1a1 "github.com/red-hat-storage/ocs-client-operator/api/v1alpha1"
 	ocsv1 "github.com/red-hat-storage/ocs-operator/api/v4/v1"
 	ocsv1alpha1 "github.com/red-hat-storage/ocs-operator/api/v4/v1alpha1"
-	"github.com/red-hat-storage/ocs-operator/v4/controllers/namespace"
 	"github.com/red-hat-storage/ocs-operator/v4/controllers/ocsinitialization"
 	"github.com/red-hat-storage/ocs-operator/v4/controllers/platform"
-	"github.com/red-hat-storage/ocs-operator/v4/controllers/storageclassrequest"
 	"github.com/red-hat-storage/ocs-operator/v4/controllers/storagecluster"
 	controllers "github.com/red-hat-storage/ocs-operator/v4/controllers/storageconsumer"
+	"github.com/red-hat-storage/ocs-operator/v4/controllers/storagerequest"
 	"github.com/red-hat-storage/ocs-operator/v4/controllers/util"
 	cephv1 "github.com/rook/rook/pkg/apis/ceph.rook.io/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -168,15 +167,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&namespace.NamespaceReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("Namespace"),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Namespace")
-		os.Exit(1)
-	}
-
 	if err = (&ocsinitialization.OCSInitializationReconciler{
 		Client:            mgr.GetClient(),
 		Log:               ctrl.Log.WithName("controllers").WithName("OCSInitialization"),
@@ -208,13 +198,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&storageclassrequest.StorageClassRequestReconciler{
+	if err = (&storagerequest.StorageRequestReconciler{
 		Cache:             mgr.GetCache(),
 		Client:            mgr.GetClient(),
 		Scheme:            mgr.GetScheme(),
 		OperatorNamespace: operatorNamespace,
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "StorageClassRequest")
+		setupLog.Error(err, "unable to create controller", "controller", "StorageRequest")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

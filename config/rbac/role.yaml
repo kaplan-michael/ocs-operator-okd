@@ -147,10 +147,6 @@ rules:
   - namespaces
   verbs:
   - get
-  - list
-  - patch
-  - update
-  - watch
 - apiGroups:
   - ""
   resources:
@@ -159,13 +155,6 @@ rules:
   - get
   - list
   - watch
-- apiGroups:
-  - ""
-  resources:
-  - pods
-  verbs:
-  - delete
-  - list
 - apiGroups:
   - k8s.cni.cncf.io
   resources:
@@ -241,26 +230,6 @@ rules:
 - apiGroups:
   - ocs.openshift.io
   resources:
-  - storageclassrequests
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - ocs.openshift.io
-  resources:
-  - storageclassrequests/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - ocs.openshift.io
-  resources:
   - storageclusters
   verbs:
   - get
@@ -282,6 +251,26 @@ rules:
   - ocs.openshift.io
   resources:
   - storageconsumers/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - ocs.openshift.io
+  resources:
+  - storagerequests
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ocs.openshift.io
+  resources:
+  - storagerequests/status
   verbs:
   - get
   - patch
